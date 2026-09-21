@@ -1,0 +1,826 @@
+@font-face {
+    font-family: 'visitor2';
+    src: url('visitor2.ttf') format('truetype');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'mittel';
+    src: url('mittel.otf') format('opentype');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "munro";
+    src: url(munro_small.woff) format("woff");
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "vga";
+    src: url(vga.ttf) format("truetype");
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+@supports (-moz-appearance: none) { /* Firefox-specific fixes. Thanks Mozilla. */
+  .signalis-header-text,
+  .signalis-transcription-text,
+  .signalis-ds-pb-text,
+  .signalis-freq-label,
+  .signalis-transcription-header,
+  .signalis-button-off,
+  .signalis-button-on,
+  .signalis-diag-text {
+    line-height: 0.8;
+    transform: scaleY(0.9);
+    margin-block: 0;
+  }
+  .signalis-memory-link {
+    line-height: 0.95;
+    margin-block: 0;
+  }
+}
+
+@supports (-webkit-appearance: none) {
+  .signalis-receiver-freq {
+    padding-top: 20px; /* Safari-specific fixes. Thanks WebKit. */
+  }
+}
+
+body::before {
+  contain: paint;
+}
+
+html,
+body {
+    height: 100%;
+    margin: 0;
+}
+
+/* bloom overlay */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  mix-blend-mode: screen;
+  opacity: 0.25;
+  backdrop-filter: blur(12px) brightness(1.25);
+  -webkit-backdrop-filter: blur(12px) brightness(1.25);
+  transition: opacity 300ms ease, backdrop-filter 300ms ease;
+  background: radial-gradient(circle at 30% 10%, rgba(255,210,180,0.06), transparent 20%),
+              radial-gradient(circle at 80% 70%, rgba(180,210,255,0.04), transparent 18%);
+}
+
+body {
+    overflow: hidden;
+}
+
+#viewport {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+@media screen and (orientation: portrait) { /* portrait mode hacks, i value my life too much to make a proper layout */
+    #signalis-receiver-window {
+        display: none !important;
+    }
+    #signalis-diagnostics-window {
+        display: none !important;
+    }
+    #scale-wrap {
+        width: 100vw;
+        height: 100vh;
+        transform: none !important;
+    }
+    #viewport > #scale-wrap {
+        flex: 1 1 auto;
+        max-width: 100%;
+    }
+    .signalis-window {
+        border: 2px solid rgb(188, 69, 29);
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        box-sizing: border-box;
+    }
+}
+
+#scale-wrap {
+    width: 1504px;
+    height: 898px;
+    transform-origin: center center;
+    /* lock viewport res to 1504x898 (see JS comments) */
+}
+#viewport > #scale-wrap {
+    flex: 0 0 1504px;
+    max-width: none;
+}
+
+body {
+    background-color: black;
+    color: white;
+    min-height: 100vh;
+    margin: 0;
+    display: flex;
+    align-items: center;
+}
+
+.main {
+    display: flex;
+    gap: 10px;
+    align-items: stretch;
+    padding: 5px;
+    box-sizing: border-box;
+    flex-wrap: wrap;
+    height: 800px;
+    width: 100%;
+    user-select: none;
+}
+
+.signalis-window {
+    border: 2px solid rgb(188, 69, 29);
+    margin: 0;
+    flex: 1 1 0;
+    min-width: 200px;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+.signalis-window {
+    position: relative;
+}
+
+.signalis-transcription-window {
+    border: 2px solid rgb(188, 69, 29);
+    margin: 4px 2px;
+    min-width: 200px;
+    height: 30%;
+    box-sizing: border-box;
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    bottom: 10px;
+}
+
+.signalis-transcription-text {
+    font-family: 'vga', monospace;
+    font-size: 26pt;
+    color: white;
+    padding: 20px 10px;
+    margin: 0;
+    height: calc(100% - 20px);
+    font-weight: lighter;
+    overflow-y: auto;
+    transform: scale(1, 1.1);
+}
+
+.signalis-header {
+    background-color: rgb(188, 69, 29);
+    padding: 5px;
+    margin: 0;
+}
+.signalis-header-text {
+    font-family: 'visitor2', monospace;
+    font-size: 30pt;
+    color: black;
+    margin: 10px auto;
+    user-select: none;
+    background-color: white;
+    padding: 1px 18px;
+    width: 230px;
+    text-align: center;
+    font-weight: 80;
+}
+
+.signalis-transcription-header {
+    padding: 0;
+    margin: 0;
+    text-align: center;
+    color: black;
+    font-family: 'visitor2', monospace;
+    font-weight: lighter;
+    font-size: 26pt;
+}
+
+.signalis-inside-border {
+    border: 2px solid rgb(63, 63, 63);
+    margin: 10px auto;
+    padding: 0 15px 0 9.5%;
+    width: 50%;
+    text-align: right;
+}
+
+.signalis-receiver {
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-start;
+    gap: 3px;
+    padding: 4px 4px;
+    width: 100%;
+}
+
+.signalis-receiver-freq {
+    font-family: 'mittel', monospace;
+    font-size: 60pt;
+    padding: 0;
+    margin: 0;
+    margin-top: 10px;
+    color: rgb(188, 69, 29);
+    transform: scale(1, 1.3);
+}
+
+.signalis-button-off {
+    border: 2px solid rgb(63, 63, 63);
+    color: rgb(63, 63, 63);
+    width: 75px;
+    font-family: "visitor2", monospace;
+    font-size: 22pt;
+    text-align: center;
+}
+
+.signalis-button-off p {
+    transform: scale(1, 1.1);
+    padding: 0;
+    margin: 0;
+}
+
+.signalis-button-on {
+    border: 2px solid rgb(188, 69, 29);
+    color: rgb(188, 69, 29);
+    width: 75px;
+    font-family: "visitor2", monospace;
+    font-size: 22pt;
+    text-align: center;
+}
+
+.signalis-button-on p {
+    transform: scale(1, 1.1);
+    padding: 0;
+    margin: 0;
+}
+
+.signalis-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin: 10px;
+    padding-top: 15px;
+}
+
+.signalis-freq {
+    display: flex;
+    gap: 5px;
+    align-items: flex-start;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.signalis-freq .signalis-buttons {
+    flex: 0 0 80px;
+}
+
+.signalis-freq .signalis-freq-visualizer {
+    flex: 1 1 auto;
+}
+
+.signalis-freq-2 {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    width: 100%;
+    box-sizing: border-box;
+    margin-top: 15px;
+}
+
+.signalis-freq-2 .signalis-freq-line,
+.signalis-freq-2 .signalis-freq-visualizer {
+    width: 100%;
+}
+
+.signalis-freq-2 .signalis-freq-visualizer {
+    flex: 1 1 auto;
+}
+
+.signalis-receiver>.signalis-freq-label {
+    margin: 0;
+    line-height: 1;
+    user-select: none;
+    color: rgb(63, 63, 63);
+    font-family: 'visitor2', monospace;
+    font-size: 26pt;
+}
+
+.signalis-receiver .signalis-inside-border {
+    margin: 0;
+    width: auto;
+
+    display: flex;
+    align-items: baseline;
+    justify-content: flex-end;
+    border: 2px solid rgb(63, 63, 63);
+    text-align: right;
+}
+
+.signalis-window,
+.signalis-header,
+.signalis-header-text {
+    transition: border-color 150ms ease, background-color 150ms ease, color 150ms ease;
+}
+
+.signalis-window:hover {
+    border-color: white;
+}
+
+.signalis-window:hover .signalis-header,
+.signalis-window:hover .signalis-header-text {
+    background-color: white;
+    color: black;
+}
+
+.main .signalis-window:first-child {
+    flex: 0.8 1 0;
+}
+
+.signalis-memory-window {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 80%;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.signalis-memory-link {
+    font-family: 'vga', monospace;
+    font-size: 24pt;
+    color: black;
+    padding: 2px 8px;
+    margin: 0 10px;
+    border-radius: 0 5px 0 5px;
+    width: 93%;
+    text-decoration: none;
+    text-align: center;
+}
+
+.signalis-freq-visualizer hr {
+    border: 3px dotted rgb(80, 80, 80);
+    width: 80%;
+    margin: 10px 20px;
+}
+
+.signalis-freq-line {
+    display: flex;
+    align-items: center;
+    gap: 1px;
+    font-size: 26pt;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.signalis-freq-line hr {
+    border: 2px solid rgb(80, 80, 80);
+    flex: 0 0 80%;
+    width: 80%;
+    max-width: 80%;
+    min-width: 40px;
+    margin: 0;
+    height: 0;
+    position: relative;
+}
+
+.signalis-terminator {
+    display: inline-block;
+    width: 2px;
+    height: 25px;
+    background-color: rgb(80, 80, 80);
+    align-self: center;
+    margin: 0;
+}
+
+.signalis-terminator.left {
+    margin-right: 0;
+}
+
+.signalis-terminator.right {
+    margin-left: 0;
+}
+
+.signalis-freq-arrow {
+    display: inline-block;
+    color: rgb(188, 69, 29);
+    font-family: 'visitor2', monospace;
+    font-size: 26pt;
+    user-select: none;
+    transform: scale(0.6, 2);
+    margin: 0;
+    margin-top: 10px;
+    padding: 0;
+    line-height: 1;
+}
+
+.signalis-freq-scale {
+    color: rgb(63, 63, 63);
+    font-family: 'visitor2', monospace;
+    font-size: 26pt;
+    margin-left: 12px;
+}
+
+.signalis-freq-icons {
+    color: rgb(63, 63, 63);
+    font-family: 'visitor2', monospace;
+    font-size: 22pt;
+    margin-left: 55px;
+}
+
+
+.signalis-diag-text {
+    font-family: 'visitor2', monospace;
+    font-size: 30pt;
+    color: black;
+    margin: 10px auto;
+    user-select: none;
+    background-color: rgb(188, 69, 29);
+    padding: 1px 40px;
+    width: 280px;
+    text-align: center;
+    font-weight: 80;
+}
+
+.signalis-diag-hexagon {
+    width: 400px;
+    height: 380px;
+    margin: 12px auto 0 auto;
+    position: relative;
+    display: block;
+    pointer-events: none;
+}
+
+.signalis-diag-hexagon::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    -webkit-clip-path: polygon(50% 0%, 93.3% 24%, 93.3% 76%, 50% 100%, 6.7% 76%, 6.7% 24%);
+    clip-path: polygon(50% 0%, 93.3% 24%, 93.3% 76%, 50% 100%, 6.7% 76%, 6.7% 24%);
+    background: white;
+    box-sizing: border-box;
+    border-radius: 2px;
+}
+
+.signalis-diag-hexagon::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    -webkit-clip-path: polygon(50% 0%, 93.3% 24%, 93.3% 76%, 50% 100%, 6.7% 76%, 6.7% 24%);
+    clip-path: polygon(50% 0%, 93.3% 24%, 93.3% 76%, 50% 100%, 6.7% 76%, 6.7% 24%);
+    background:
+        url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cline x1='6.7' y1='24.0' x2='93.3' y2='76.0' stroke='rgb(80,80,80)' stroke-width='0.5' stroke-linecap='square'/%3E%3Cline x1='6.7' y1='76.0' x2='93.3' y2='24.0' stroke='rgb(80,80,80)' stroke-width='0.5' stroke-linecap='square'/%3E%3Cline x1='50.0' y1='0.0' x2='50.0' y2='100.0' stroke='rgb(80,80,80)' stroke-width='0.5' stroke-linecap='square'/%3E%3Crect x='17.8' y='17.8' width='64.3' height='64.3' fill='none' stroke='rgb(80,80,80)' stroke-width='0.5'/%3E%3Crect x='39.2' y='39.2' width='21.7' height='21.7' fill='none' stroke='rgb(80,80,80)' stroke-width='0.5'/%3E%3Crect x='48.8' y='48.8' width='2.5' height='2.5' fill='rgb(188,69,29)' stroke='none'/%3E%3C/svg%3E"),
+        black;
+    background-repeat: no-repeat, no-repeat;
+    background-size: 100% 100%, cover;
+    transform: scale(0.98);
+    transform-origin: center;
+    margin: auto;
+    border-radius: 2px;
+}
+
+.signalis-diag-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 8px;
+    position: relative;
+}
+
+.signalis-diag-text-vertical {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: none;
+    margin: 0;
+    padding: 4px 6px;
+    width: 40px;
+    height: 400px;
+    box-sizing: border-box;
+}
+
+.signalis-diag-controls>.signalis-diag-text-vertical {
+    position: relative;
+}
+
+.signalis-diag-controls>.signalis-diag-text-vertical::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    height: 100%;
+    width: 26px;
+    background: transparent;
+    border: 2px solid rgb(63, 63, 63);
+    box-sizing: border-box;
+}
+
+.signalis-diag-controls>.signalis-diag-text-vertical:first-child::after {
+    right: 46px;
+}
+
+.signalis-diag-controls>.signalis-diag-text-vertical:last-child::after {
+    left: -32px;
+}
+
+.signalis-diag-controls>.signalis-diag-text-vertical::before {
+    content: '';
+    position: absolute;
+    top: 145px;
+    height: 110px;
+    width: 26px;
+    background: black;
+    box-sizing: border-box;
+    z-index: 20;
+}
+
+.signalis-diag-controls>.signalis-diag-text-vertical:first-child::before {
+    right: 46px
+}
+
+.signalis-diag-controls>.signalis-diag-text-vertical:last-child::before {
+    left: -32px;
+}
+
+.signalis-diag-controls>.signalis-diag-text-vertical::after {
+    z-index: 10;
+}
+
+.signalis-diag-controls>.signalis-diag-text-vertical:first-child {
+    margin-right: -40px;
+}
+
+.signalis-diag-controls>.signalis-diag-text-vertical:last-child {
+    margin-left: -40px;
+}
+
+.signalis-diag-hexagon {
+    flex: 0 0 400px;
+    width: 400px;
+    height: 380px;
+    min-width: 400px;
+    min-height: 380px;
+}
+
+.signalis-system-text {
+    font-family: 'munro', monospace;
+    width: 40px;
+    left: 85px;
+    position: absolute;
+    font-size: 19pt;
+    top: 440px;
+    line-height: 0.7;
+}
+
+.signalis-diag-status-display {
+    width: 400px;
+    height: 120px;
+    display: flex;
+    gap: 6px;
+}
+
+.signalis-diag-status-text {
+    font-family: 'munro', monospace;
+    font-size: 16pt;
+    margin: 0;
+    padding-left: 10px
+}
+
+.signalis-diag-status-window {
+    width: 270px;
+    height: 75%;
+    border: 2px solid white;
+    border-radius: 12px 0 12px 0;
+}
+
+.signalis-diag-status-window-infill {
+    width: 98%;
+    height: 93%;
+    background-color: rgb(57, 179, 220);
+    margin: 3px auto;
+    border-radius: 10px 0 10px 0;
+}
+
+.signalis-diag-nominal-text {
+    font-family: 'vga', monospace;
+    font-size: 20pt;
+    margin: 0;
+    padding: 4px;
+    padding-right: 16px;
+    text-align: right;
+    color: black;
+    font-weight: lighter;
+    transform: scale(1.1, 1.2);
+}
+
+.signalis-diag-plus-icon {
+    font-family: 'vga', monospace;
+    font-size: 48pt;
+    margin: 0 0 0 0;
+    padding: 0;
+    text-align: left;
+    bottom: 2px;
+    color: black;
+    font-weight: lighter;
+}
+
+.signalis-diag-status-icon {
+    height: 48px;
+    width: 48px;
+    border: 2px solid rgb(63, 63, 63);
+    border-radius: 6px;
+}
+
+.signalis-diag-status-icons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    width: fit-content;
+    margin: 4px 10px 0 20px;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.signalis-diag-status-progressbars {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-left: auto;
+    margin-right: 10px;
+    justify-content: center;
+    height: 100%;
+    color: white;
+    text-align: right;
+}
+
+.signalis-diag-status-progressbar {
+    display: flex;
+    flex-direction: row;
+    text-align: right;
+}
+
+.signalis-ds-pb-text {
+    font-family: 'visitor2', monospace;
+    font-size: 28pt;
+    margin: 0;
+    padding-right: 10px;
+    align-self: right;
+    text-align: right;
+    line-height: 0.4;
+    color: rgb(63, 63, 63);
+    width: 70px;
+}
+
+.signalis-ds-pb-line {
+    flex: 0.8 0.8 auto;
+    height: 1px;
+    border: 2px solid rgb(63, 63, 63);
+    background-color: rgb(63, 63, 63);
+    box-sizing: border-box;
+    justify-self: center;
+    margin-top: 4px;
+}
+
+.signalis-square-with-line-in-it-lol {
+    width: 40px;
+    height: 40px;
+    right: 40px;
+    border: 3px solid white;
+    margin: 0 auto;
+    margin-top: 35px;
+    position: absolute;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40' preserveAspectRatio='none'><line x1='2' y1='2' x2='38' y2='38' stroke='white' stroke-width='3' stroke-linecap='square'/></svg>");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 100% 100%;
+}
+
+.signalis-lstr-logo {
+    position: absolute;
+    bottom: 0px;
+    right: 5px;
+    cursor: pointer;
+}
+
+.signalis-icon1 {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40' preserveAspectRatio='none'><polygon points='4,20 10,10 30,10 36,20 30,30 10,30' stroke='rgb(80,80,80)' stroke-width='2' fill='none' stroke-linecap='square'/><circle cx='20' cy='20' r='4' fill='rgb(80,80,80)'/></svg>");
+}
+
+.signalis-icon2 {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40' preserveAspectRatio='none'><line x1='10' y1='20' x2='30' y2='20' stroke='rgb(80,80,80)' stroke-width='2' stroke-linecap='square'/><line x1='20' y1='10' x2='20' y2='30' stroke='rgb(80,80,80)' stroke-width='2' stroke-linecap='square'/></svg>");
+}
+
+.signalis-icon3 {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48' preserveAspectRatio='none'><g transform='translate(4 4)'><line x1='0' y1='20' x2='40' y2='20' stroke='rgb(80,80,80)' stroke-width='2' stroke-linecap='square'/><line x1='0' y1='20' x2='10' y2='0' stroke='rgb(80,80,80)' stroke-width='2' stroke-linecap='square'/><line x1='10' y1='0' x2='30' y2='40' stroke='rgb(80,80,80)' stroke-width='2' stroke-linecap='square'/><line x1='40' y1='20' x2='30' y2='40' stroke='rgb(80,80,80)' stroke-width='2' stroke-linecap='square'/></g></svg>");
+}
+
+.signalis-icon4 {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40' preserveAspectRatio='none'><line x1='14' y1='19' x2='26' y2='9' stroke='rgb(80,80,80)' stroke-width='2' stroke-linecap='square'/><line x1='14' y1='19' x2='26' y2='31' stroke='rgb(80,80,80)' stroke-width='2' stroke-linecap='square'/><rect x='6' y='15' width='8' height='8' rx='1' fill='none' stroke='rgb(80,80,80)' stroke-width='2' stroke-linecap='square'/><rect x='25' y='5' width='8' height='8' rx='1' fill='none' stroke='rgb(80,80,80)' stroke-width='2' stroke-linecap='square'/><rect x='25' y='26' width='8' height='8' rx='1' fill='none' stroke='rgb(80,80,80)' stroke-width='2' stroke-linecap='square'/></svg>");
+}
+
+.signalis-icon5 {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40' preserveAspectRatio='none'><rect x='0' y='0' width='40' height='4' fill='black'/><rect x='0' y='36' width='40' height='4' fill='black'/><path d='M11 16 h20 v20 l-2 2 h-12 l-2 -2 z' stroke='rgb(80,80,80)' stroke-width='2' fill='rgb(80,80,80)' stroke-linejoin='miter' stroke-linecap='square'/><rect x='12' y='6' width='4' height='22' rx='0.9' fill='rgb(80,80,80)'/><rect x='17' y='4' width='4' height='24' rx='0.9' fill='rgb(80,80,80)'/><rect x='22' y='4' width='4' height='24' rx='0.9' fill='rgb(80,80,80)'/><rect x='27' y='6' width='4' height='22' rx='0.9' fill='rgb(80,80,80)'/><rect x='11' y='16' width='6' height='17' rx='2' fill='rgb(80,80,80)'/><rect x='7' y='16' width='2' height='17' rx='2' fill='rgb(80,80,80)'/></svg>");
+}
+
+.signalis-icon6 {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40' preserveAspectRatio='none'><polygon points='20,6 17.5,13 22.5,13' fill='rgb(80,80,80)'/><polygon points='6,20 13,17.5 13,22.5' fill='rgb(80,80,80)'/><polygon points='34,20 27,22.5 27,17.5' fill='rgb(80,80,80)'/><polygon points='20,34 22.5,27 17.5,27' fill='rgb(80,80,80)'/><line x1='10' y1='10' x2='30' y2='30' stroke='rgb(80,80,80)' stroke-width='2' stroke-linecap='square'/><line x1='30' y1='10' x2='10' y2='30' stroke='rgb(80,80,80)' stroke-width='2' stroke-linecap='square'/></svg>");
+}
+
+.signalis-icon7 {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40' preserveAspectRatio='none'><line x1='20' y1='20' x2='30' y2='32' stroke='rgb(80,80,80)' stroke-width='3' stroke-linecap='square'/><line x1='20' y1='20' x2='10' y2='32' stroke='rgb(80,80,80)' stroke-width='3' stroke-linecap='square'/><line x1='9' y1='18' x2='31' y2='18' stroke='rgb(80,80,80)' stroke-width='3' stroke-linecap='square'/><line x1='20' y1='12' x2='20' y2='12' stroke='rgb(80,80,80)' stroke-width='6' stroke-linecap='square'/></svg>");
+}
+
+.signalis-icon8 {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40' preserveAspectRatio='none'><path d='M12 32 L28 32' stroke='rgb(80,80,80)' stroke-width='2' stroke-linecap='square' fill='none'/><line x1='14' y1='32' x2='20' y2='8' stroke='rgb(80,80,80)' stroke-width='2' stroke-linecap='square'/><line x1='26' y1='32' x2='20' y2='8' stroke='rgb(80,80,80)' stroke-width='2' stroke-linecap='square'/><line x1='18' y1='22' x2='22' y2='22' stroke='rgb(80,80,80)' stroke-width='2' stroke-linecap='square'/><line x1='17' y1='26' x2='23' y2='26' stroke='rgb(80,80,80)' stroke-width='2' stroke-linecap='square'/><line x1='20' y1='8' x2='20' y2='12' stroke='rgb(80,80,80)' stroke-width='2' stroke-linecap='square'/><circle cx='20' cy='6' r='3' fill='rgb(80,80,80)'/><path d='M12 3 A4 3 0 0 0 12 13' stroke='rgb(80,80,80)' stroke-width='1.5' fill='none' stroke-linecap='square'/><path d='M14 5 A3 2 0 0 0 14 11' stroke='rgb(80,80,80)' stroke-width='1.5' fill='none' stroke-linecap='square'/><path d='M14 7 A2 1 0 0 0 14 10' stroke='rgb(80,80,80)' stroke-width='1.2' fill='none' stroke-linecap='square'/><path d='M26 5 A3 2 0 0 1 26 11' stroke='rgb(80,80,80)' stroke-width='1.5' fill='none' stroke-linecap='square'/><path d='M26 7 A2 1 0 0 1 26 10' stroke='rgb(80,80,80)' stroke-width='1.2' fill='none' stroke-linecap='square'/><path d='M28 3 A4 3 0 0 1 28 13' stroke='rgb(80,80,80)' stroke-width='1.5' fill='none' stroke-linecap='square'/></svg>");
+    /* the radio tower hides a secret... */
+    cursor: help;
+}
+
+/* everything here is added by me and not a recreation of the page */
+
+#signalis-settings-menu {
+    position: fixed;                 
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 99;
+    pointer-events: auto;
+    background: black;
+    border: 2px solid rgb(188, 69, 29);
+    color: white;
+    padding: 6px 10px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+    display: none;
+    padding: 0;
+}
+.signalis-checkboxes {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 10px;
+}
+
+.signalis-checkbox-w-text {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+}
+
+.signalis-checkbox {
+    width: 40px;
+    height: 40px;
+    border: 2px solid rgb(188, 69, 29);
+    cursor: pointer;
+}
+
+.signalis-checkbox-text {
+    font-family: 'visitor2', monospace;
+    font-size: 38pt;
+    color: rgb(188, 69, 29);
+    text-align: center;
+    margin: 4px;
+}
+.signalis-checkbox-text.small {
+    font-size: 26pt;
+    align-self: center;
+}
+.signalis-checkbox-checked {
+    background-color: rgb(188, 69, 29);
+}
+
+.bloom-disabled {
+    backdrop-filter: none !important;
+}
+body.bloom-disabled::before {
+    opacity: 0 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+.signalis-settings-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 98;
+    display: none;
+}

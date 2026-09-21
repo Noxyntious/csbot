@@ -1,0 +1,12 @@
+[bot]
+token = "YOURTOKENHERE"
+client_id = "IDHERE"
+
+[settings]
+activity = "Counter-Strike 2"
+activity_type = "PLAYING"
+status = "online"
+
+[steam]
+api_key = "STEAMAPIKEYHERE"
+

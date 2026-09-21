@@ -1,0 +1,17 @@
+{
+  "name": "microwave",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "discord.js": "^14.27.0",
+    "puppeteer": "^25.9.0",
+    "toml": "^3.0.0"
+  }
+}
