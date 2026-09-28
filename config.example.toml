@@ -10,3 +10,5 @@ status = "online"
 [steam]
 api_key = "STEAMAPIKEYHERE"
 
+[faceit]
+api_key = "FACEITAPIKEYHERE"

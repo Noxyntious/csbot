@@ -28,8 +28,28 @@ async function fetchSteamInfo(steam64Id) {
     }
 }
 
-async function renderStatsCard(player) {
-    const steamInfo = await fetchSteamInfo(player.steam64_id);
+async function fetchFaceit(steam64Id, apiKey) {
+    if (!apiKey) return null;
+    for (const game of ['cs2', 'csgo']) {
+        try {
+            const res = await fetch(`https://open.faceit.com/data/v4/players?game=${game}&game_player_id=${steam64Id}`, {
+                headers: { Authorization: `Bearer ${apiKey}` }
+            });
+            if (!res.ok) continue;
+            const data = await res.json();
+            const g = data.games && data.games[game];
+            if (g && g.skill_level) return { level: g.skill_level, elo: g.faceit_elo };
+        } catch {}
+    }
+    return null;
+}
+
+async function renderStatsCard(player, faceitApiKey) {
+    const [steamInfo, faceitInfo] = await Promise.all([
+        fetchSteamInfo(player.steam64_id),
+        fetchFaceit(player.steam64_id, faceitApiKey)
+    ]);
+    const faceit = faceitInfo || (player.ranks && player.ranks.faceit ? { level: player.ranks.faceit, elo: null } : null);
 
     const browser = await puppeteer.launch({
         headless: 'new',
@@ -55,25 +75,25 @@ async function renderStatsCard(player) {
         };
 
         const mmRanks = [
-            'Silver 1','Silver 2','Silver 3','Silver 4','Silver Elite','Silver Elite Master',
-            'Gold Nova 1','Gold Nova 2','Gold Nova 3','Gold Nova Master',
-            'Master Guardian 1','Master Guardian 2','Master Guardian Elite','Distinguished Master Guardian',
-            'Legendary Eagle','Legendary Eagle Master','Supreme Master First Class','The Global Elite'
+            'Silver 1','Silver 2','Silver 3','Silver 4','Silver Elite','SEM',
+            'Gold Nova 1','Gold Nova 2','Gold Nova 3','Gold Nova M',
+            'MG1','MG2','MGE','DMG',
+            'LE','LEM','Supreme','Global Elite'
         ];
 
         let compRanksHtml = '';
         const rankEntries = [];
+        if (ranks.wingman && ranks.wingman > 0) {
+            const wmName = mmRanks[ranks.wingman - 1] || `Rank ${ranks.wingman}`;
+            rankEntries.push(`<div class="comp-rank"><span class="rank-map wingman">Wingman</span><span class="rank-val">${wmName}</span></div>`);
+        }
         if (ranks.competitive && ranks.competitive.length > 0) {
-            const valid = ranks.competitive.filter(r => r.rank > 0);
+            const valid = ranks.competitive.filter(r => r.rank > 0).sort((a, b) => b.rank - a.rank);
             valid.forEach(r => {
                 const name = rankNames[r.map_name] || r.map_name.replace('de_', '').replace('cs_', '');
                 const rankName = mmRanks[r.rank - 1] || `Rank ${r.rank}`;
                 rankEntries.push(`<div class="comp-rank"><span class="rank-map">${name}</span><span class="rank-val">${rankName}</span></div>`);
             });
-        }
-        if (ranks.wingman && ranks.wingman > 0) {
-            const wmName = mmRanks[ranks.wingman - 1] || `Rank ${ranks.wingman}`;
-            rankEntries.push(`<div class="comp-rank"><span class="rank-map">Wingman</span><span class="rank-val">${wmName}</span></div>`);
         }
         compRanksHtml = rankEntries.join('');
 
@@ -104,6 +124,14 @@ async function renderStatsCard(player) {
             if (rating >= 10000) return '#6666ff';
             if (rating >= 5000) return '#88ccff';
             return '#808080';
+        }
+
+        function faceitColor(level) {
+            if (level >= 10) return '#fe1f00';
+            if (level >= 8) return '#ff6309';
+            if (level >= 4) return '#ffc800';
+            if (level >= 2) return '#1ce400';
+            return '#eeeeee';
         }
 
         function mmRankColor(rank) {
@@ -220,6 +248,14 @@ async function renderStatsCard(player) {
         text-transform: uppercase;
         letter-spacing: 2px;
     }
+
+    .faceit-rank {
+        font-size: 28px;
+        line-height: 1;
+        margin-top: 6px;
+    }
+
+    .faceit-elo { font-size: 20px; }
 
     .right {
         flex: 1;
@@ -368,9 +404,12 @@ async function renderStatsCard(player) {
     }
 
     .rank-map { color: #676767; }
+    .rank-map.wingman { color: #BC451D; }
     .rank-val {
         padding: 1px 6px;
         font-size: 20px;
+        white-space: nowrap;
+        flex-shrink: 0;
     }
 
     .bans {
@@ -405,6 +444,7 @@ async function renderStatsCard(player) {
         <div class="steam-id">${player.steam64_id}</div>
         <div class="premier-rank" style="color: ${premierColor(ranks.premier)}">${ranks.premier ? ranks.premier.toLocaleString() : 'N/A'}</div>
         <div class="premier-label">Premier Rating</div>
+        ${faceit ? `<div class="faceit-rank" style="color: ${faceitColor(faceit.level)}">LVL ${faceit.level}${faceit.elo ? ` <span class="faceit-elo">${faceit.elo}</span>` : ''}</div>` : ''}
         <div class="win-rate"><span>${ranks.leetify != null ? ranks.leetify.toFixed(2) : 'N/A'}</span> <span class="sub-rating" style="color: #ffd700">${rating.t_leetify != null ? rating.t_leetify.toFixed(2) : 'N/A'}</span> <span class="sub-rating" style="color: #7272ff">${rating.ct_leetify != null ? rating.ct_leetify.toFixed(2) : 'N/A'}</span></div>
         <div class="win-rate-label">Leetify Rating</div>
         <div class="matches-count">${player.total_matches || 0} matches played</div>
@@ -473,7 +513,7 @@ async function renderStatsCard(player) {
             clip: { x: 0, y: 0, width: 900, height: 420 }
         });
 
-        return cardBuffer;
+        return Buffer.from(cardBuffer);
     } finally {
         await browser.close();
     }

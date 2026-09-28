@@ -187,7 +187,7 @@ commands.set('stats', {
                 return interaction.editReply('This player has a private Leetify profile.');
             }
 
-            const cardBuffer = await renderStatsCard(player);
+            const cardBuffer = await renderStatsCard(player, config.faceit?.api_key);
             const attachment = new AttachmentBuilder(cardBuffer, { name: 'stats.png' });
 
             await interaction.editReply({ files: [attachment] });
