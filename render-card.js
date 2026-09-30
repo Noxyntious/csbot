@@ -35,6 +35,26 @@ async function fetchSteamInfo(steam64Id) {
     return { name: null, avatar: null };
 }
 
+async function fetchBackground(steam64Id, steamApiKey) {
+    if (!steamApiKey) return null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+            const res = await fetch(`https://api.steampowered.com/IPlayerService/GetMiniProfileBackground/v1/?key=${steamApiKey}&steamid=${steam64Id}`);
+            if (!res.ok) throw new Error(`background status ${res.status}`);
+            const data = await res.json();
+            const image = data.response?.profile_background?.image_large;
+            if (!image) return null;
+            const imgRes = await fetch(`https://cdn.akamai.steamstatic.com/steamcommunity/public/images/${image}`);
+            if (!imgRes.ok) throw new Error(`background image status ${imgRes.status}`);
+            const buf = Buffer.from(await imgRes.arrayBuffer());
+            return `data:image/jpeg;base64,${buf.toString('base64')}`;
+        } catch {
+            await new Promise(r => setTimeout(r, 500));
+        }
+    }
+    return null;
+}
+
 async function fetchFaceit(steam64Id, apiKey) {
     if (!apiKey) return null;
     for (const game of ['cs2', 'csgo']) {
@@ -51,10 +71,11 @@ async function fetchFaceit(steam64Id, apiKey) {
     return null;
 }
 
-async function renderStatsCard(player, faceitLookup) {
-    const [steamInfo, faceitInfo] = await Promise.all([
+async function renderStatsCard(player, faceitLookup, steamApiKey) {
+    const [steamInfo, faceitInfo, background] = await Promise.all([
         fetchSteamInfo(player.steam64_id),
-        faceitLookup
+        faceitLookup,
+        fetchBackground(player.steam64_id, steamApiKey)
     ]);
     const faceit = faceitInfo || (player.ranks && player.ranks.faceit ? { level: player.ranks.faceit, elo: null } : null);
 
@@ -196,6 +217,22 @@ async function renderStatsCard(player, faceitLookup) {
         padding: 12px 16px;
         gap: 4px;
         border-right: 2px solid #BC451D;
+    }
+
+    .left.has-bg {
+        background-color: #000000;
+        background-size: cover;
+        background-position: center;
+    }
+
+    .left.has-bg > * {
+        text-shadow: 0 0 6px #000000, 0 0 3px #000000, 1px 1px 0 #000000;
+    }
+
+    .left.has-bg .steam-id,
+    .left.has-bg .matches-count,
+    .left.has-bg .footer {
+        color: #b8b8b8;
     }
 
     .avatar {
@@ -459,7 +496,7 @@ async function renderStatsCard(player, faceitLookup) {
 </head>
 <body>
 <div class="card">
-    <div class="left">
+    <div class="left${background ? ' has-bg' : ''}"${background ? ` style="background-image: linear-gradient(rgba(0, 0, 0, 0.78), rgba(0, 0, 0, 0.78)), url('${background}')"` : ''}>
         ${avatarSrc ? `<img class="avatar" src="${avatarSrc}" />` : ''}
         <div class="player-name">${steamInfo.name || player.name || 'Unknown'}</div>
         <div class="steam-id">${player.steam64_id}</div>

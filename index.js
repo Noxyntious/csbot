@@ -189,7 +189,7 @@ commands.set('stats', {
             }
 
             const faceitPromise = fetchFaceit(player.steam64_id, config.faceit?.api_key);
-            const cardBuffer = await renderStatsCard(player, faceitPromise);
+            const cardBuffer = await renderStatsCard(player, faceitPromise, config.steam?.api_key);
             const attachment = new AttachmentBuilder(cardBuffer, { name: 'stats.png' });
 
             await interaction.editReply({ files: [attachment] });

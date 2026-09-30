@@ -1,4 +1,5 @@
 const fs = require('fs');
+const path = require('path');
 const zlib = require('zlib');
 const { renderStatsCard } = require('./render-card');
 
@@ -44,15 +45,29 @@ function fakeAvatar(size = 184) {
     ]);
 }
 
+const backgroundFile = path.join(__dirname, 'background.jpg');
+
+function toArrayBuffer(img) {
+    return img.buffer.slice(img.byteOffset, img.byteOffset + img.byteLength);
+}
+
 global.fetch = async (url) => {
     const u = String(url);
+    if (u.includes('GetMiniProfileBackground')) {
+        const body = { response: { profile_background: { image_large: 'preview/background.jpg' } } };
+        return { ok: true, status: 200, json: async () => body };
+    }
+    if (u.includes('preview/background.jpg')) {
+        const img = fs.readFileSync(backgroundFile);
+        return { ok: true, status: 200, arrayBuffer: async () => toArrayBuffer(img) };
+    }
     if (u.includes('steamcommunity.com/profiles')) {
         const xml = '<steamID><![CDATA[Preview Player]]></steamID><avatarFull><![CDATA[https://preview.invalid/avatar.jpg]]></avatarFull>';
         return { ok: true, status: 200, text: async () => xml };
     }
     if (u === 'https://preview.invalid/avatar.jpg') {
         const img = fakeAvatar();
-        return { ok: true, status: 200, arrayBuffer: async () => img.buffer.slice(img.byteOffset, img.byteOffset + img.byteLength) };
+        return { ok: true, status: 200, arrayBuffer: async () => toArrayBuffer(img) };
     }
     throw new Error(`preview blocked network request: ${u}`);
 };
@@ -92,9 +107,9 @@ const player = {
 };
 
 const faceit = { level: 9, elo: 2210 };
-const out = process.argv[2] || 'preview.png';
+const out = path.join(__dirname, 'preview.png');
 
-renderStatsCard(player, faceit).then(buf => {
+renderStatsCard(player, faceit, 'preview-key').then(buf => {
     fs.writeFileSync(out, buf);
     console.log(`wrote ${out}`);
     process.exit(0);
