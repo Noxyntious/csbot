@@ -61,6 +61,10 @@ global.fetch = async (url) => {
         const img = fs.readFileSync(backgroundFile);
         return { ok: true, status: 200, arrayBuffer: async () => toArrayBuffer(img) };
     }
+    if (u.includes('GetPlayerSummaries')) {
+        const body = { response: { players: [{ personaname: 'Preview Player', avatarfull: 'https://preview.invalid/avatar.jpg' }] } };
+        return { ok: true, status: 200, json: async () => body };
+    }
     if (u.includes('steamcommunity.com/profiles')) {
         const xml = '<steamID><![CDATA[Preview Player]]></steamID><avatarFull><![CDATA[https://preview.invalid/avatar.jpg]]></avatarFull>';
         return { ok: true, status: 200, text: async () => xml };

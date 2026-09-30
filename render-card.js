@@ -8,30 +8,45 @@ function loadFontBase64(filename) {
     return `data:${mime};base64,${buf.toString('base64')}`;
 }
 
-async function fetchSteamInfoOnce(steam64Id) {
+async function fetchProfileSummary(steam64Id, steamApiKey) {
+    if (steamApiKey) {
+        const res = await fetch(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=${steamApiKey}&steamids=${steam64Id}`);
+        if (!res.ok) throw new Error(`steam summary status ${res.status}`);
+        const data = await res.json();
+        const profile = data.response?.players?.[0];
+        return { name: profile?.personaname || null, avatarUrl: profile?.avatarfull || null };
+    }
     const res = await fetch(`https://steamcommunity.com/profiles/${steam64Id}?xml=1&_=${Date.now()}`);
     if (!res.ok) throw new Error(`steam profile status ${res.status}`);
     const xml = await res.text();
     const nameMatch = xml.match(/<steamID><!\[CDATA\[(.*?)\]\]><\/steamID>/);
     const avatarMatch = xml.match(/<avatarFull><!\[CDATA\[(.*?)\]\]><\/avatarFull>/);
+    return { name: nameMatch ? nameMatch[1] : null, avatarUrl: avatarMatch ? avatarMatch[1] : null };
+}
+
+async function fetchSteamInfoOnce(steam64Id, steamApiKey) {
+    const { name, avatarUrl } = await fetchProfileSummary(steam64Id, steamApiKey);
     let avatar = null;
-    if (avatarMatch) {
-        const imgRes = await fetch(avatarMatch[1]);
+    if (avatarUrl) {
+        const imgRes = await fetch(avatarUrl);
         if (!imgRes.ok) throw new Error(`avatar status ${imgRes.status}`);
         const buf = Buffer.from(await imgRes.arrayBuffer());
         avatar = `data:image/jpeg;base64,${buf.toString('base64')}`;
     }
-    return { name: nameMatch ? nameMatch[1] : null, avatar };
+    return { name, avatar };
 }
 
-async function fetchSteamInfo(steam64Id) {
+async function fetchSteamInfo(steam64Id, steamApiKey) {
+    let lastError;
     for (let attempt = 0; attempt < 3; attempt++) {
         try {
-            return await fetchSteamInfoOnce(steam64Id);
-        } catch {
+            return await fetchSteamInfoOnce(steam64Id, steamApiKey);
+        } catch (error) {
+            lastError = error;
             await new Promise(r => setTimeout(r, 500));
         }
     }
+    console.error('[card] could not load steam profile info:', lastError.message);
     return { name: null, avatar: null };
 }
 
@@ -73,7 +88,7 @@ async function fetchFaceit(steam64Id, apiKey) {
 
 async function renderStatsCard(player, faceitLookup, steamApiKey) {
     const [steamInfo, faceitInfo, background] = await Promise.all([
-        fetchSteamInfo(player.steam64_id),
+        fetchSteamInfo(player.steam64_id, steamApiKey),
         faceitLookup,
         fetchBackground(player.steam64_id, steamApiKey)
     ]);
