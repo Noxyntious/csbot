@@ -3,6 +3,7 @@ const path = require('path');
 const { fetchFaceit } = require('./render-card');
 
 const usersFile = path.join(__dirname, 'users.json');
+const settingsFile = path.join(__dirname, 'guild-settings.json');
 const INTERVAL_MS = 15000;
 const STATS_TTL_MS = 1800000;
 const RETRY_AFTER_FAILURE_MS = 60000;
@@ -42,6 +43,20 @@ function reportOnce(key, message, error) {
 
 function loadUsers() {
     try { return JSON.parse(fs.readFileSync(usersFile, 'utf8')); } catch { return {}; }
+}
+
+function loadSettings() {
+    try { return JSON.parse(fs.readFileSync(settingsFile, 'utf8')); } catch { return {}; }
+}
+
+function isRolesEnabled(guildId) {
+    return loadSettings()[guildId]?.roles === true;
+}
+
+function setRolesEnabled(guildId, enabled) {
+    const settings = loadSettings();
+    settings[guildId] = { ...settings[guildId], roles: enabled };
+    fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2));
 }
 
 async function fetchStats(steamId, faceitApiKey) {
@@ -130,12 +145,17 @@ async function syncGroup(guild, member, tiers, wanted, label) {
     }
 }
 
+function enabledGuilds(client) {
+    const settings = loadSettings();
+    return [...client.guilds.cache.values()].filter(g => settings[g.id]?.roles === true);
+}
+
 async function syncUserRoles(client, discordId, user, stats) {
     const premierTier = premierTierFor(stats.premier);
     const faceitTier = faceitTierFor(stats.faceit);
     const label = user.name || discordId;
 
-    for (const guild of client.guilds.cache.values()) {
+    for (const guild of enabledGuilds(client)) {
         const member = await guild.members.fetch(discordId).catch(() => null);
         if (!member) continue;
         await syncGroup(guild, member, PREMIER_TIERS, premierTier, label);
@@ -144,6 +164,7 @@ async function syncUserRoles(client, discordId, user, stats) {
 }
 
 async function runCycle(client, faceitApiKey) {
+    if (enabledGuilds(client).length === 0) return;
     const users = loadUsers();
     for (const [discordId, user] of Object.entries(users)) {
         if (!user?.steamId) continue;
@@ -177,4 +198,4 @@ function startRoleSync(client, faceitApiKey) {
     }, INTERVAL_MS);
 }
 
-module.exports = { startRoleSync, applyStats };
+module.exports = { startRoleSync, applyStats, isRolesEnabled, setRolesEnabled };

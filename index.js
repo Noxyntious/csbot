@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const toml = require('toml');
 const { renderStatsCard, fetchFaceit } = require('./render-card');
-const { startRoleSync, applyStats } = require('./roles');
+const { startRoleSync, applyStats, isRolesEnabled, setRolesEnabled } = require('./roles');
 
 // User data storage
 const usersFile = path.join(__dirname, 'users.json');
@@ -132,6 +132,16 @@ commands.set('setuser', {
     }
 });
 
+const STATS_COOLDOWN_MS = 60 * 1000;
+const statsCooldowns = new Map();
+
+function formatDuration(ms) {
+    const totalSeconds = Math.ceil(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+}
+
 commands.set('stats', {
     data: {
         name: 'stats',
@@ -148,6 +158,14 @@ commands.set('stats', {
         ]
     },
     async execute(interaction) {
+        const cooldownEnds = statsCooldowns.get(interaction.user.id);
+        if (cooldownEnds && cooldownEnds > Date.now()) {
+            return interaction.reply({
+                content: `You're on cooldown. You can use this command again in **${formatDuration(cooldownEnds - Date.now())}**.`,
+                ephemeral: true
+            });
+        }
+
         let input = interaction.options.getString('player');
 
         // If no player specified, check for saved user
@@ -160,6 +178,9 @@ commands.set('stats', {
             input = saved.steamId;
         }
 
+        statsCooldowns.set(interaction.user.id, Date.now() + STATS_COOLDOWN_MS);
+        const releaseCooldown = () => statsCooldowns.delete(interaction.user.id);
+
         await interaction.deferReply();
 
         try {
@@ -167,6 +188,7 @@ commands.set('stats', {
             try {
                 steamId = await resolveSteamId(input);
             } catch (err) {
+                releaseCooldown();
                 if (err.message === 'steam_api_key_not_configured') {
                     return interaction.editReply('Steam API key not configured. Please set `steam.api_key` in config.toml, or use a SteamID64 directly.');
                 }
@@ -179,12 +201,14 @@ commands.set('stats', {
             const response = await fetch(`https://api-public.cs-prod.leetify.com/v3/profile?steam64_id=${steamId}`);
 
             if (!response.ok) {
+                releaseCooldown();
                 return interaction.editReply(`API returned status ${response.status}. The player may not have a Leetify profile or their profile is private.`);
             }
 
             const player = await response.json();
 
             if (!player || player.privacy_mode === 'private') {
+                releaseCooldown();
                 return interaction.editReply('This player has a private Leetify profile.');
             }
 
@@ -200,6 +224,7 @@ commands.set('stats', {
                 faceit: faceitInfo?.level ?? player.ranks?.faceit ?? null
             }).catch(error => console.error('[roles] sync after stats failed:', error));
         } catch (error) {
+            releaseCooldown();
             console.error('[stats] error fetching player data:', error);
             await interaction.editReply('An error occurred while fetching player data. Please try again later.');
         }
@@ -293,6 +318,33 @@ commands.set('id', {
     }
 });
 
+commands.set('roles', {
+    data: {
+        name: 'roles',
+        description: 'Enable/Disable the role creation and assignment feature (Default: Off)',
+        default_member_permissions: '268435456',
+        integration_types: [0],
+        contexts: [0]
+    },
+    async execute(interaction) {
+        if (!interaction.inGuild() || !interaction.memberPermissions?.has('ManageRoles')) {
+            return interaction.reply({ content: 'You need the Manage Roles permission to use this.', ephemeral: true });
+        }
+
+        const enable = !isRolesEnabled(interaction.guildId);
+        setRolesEnabled(interaction.guildId, enable);
+
+        let reply = enable
+            ? 'Role creation and assignment is now **enabled**.'
+            : 'Role creation and assignment is now **disabled**.';
+
+        if (enable && !interaction.guild.members.me?.permissions.has('ManageRoles')) {
+            reply += '\nThe bot does not have the Manage Roles permission on this server yet, so it will not be able to create or assign roles until it is granted.';
+        }
+
+        await interaction.reply(reply);
+    }
+});
 
 // stolen
 async function registerCommands() {
