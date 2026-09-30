@@ -8,24 +8,31 @@ function loadFontBase64(filename) {
     return `data:${mime};base64,${buf.toString('base64')}`;
 }
 
-async function fetchSteamInfo(steam64Id) {
-    try {
-        const res = await fetch(`https://steamcommunity.com/profiles/${steam64Id}?xml=1&_=${Date.now()}`);
-        const xml = await res.text();
-        const nameMatch = xml.match(/<steamID><!\[CDATA\[(.*?)\]\]><\/steamID>/);
-        const avatarMatch = xml.match(/<avatarFull><!\[CDATA\[(.*?)\]\]><\/avatarFull>/);
-        let avatar = null;
-        if (avatarMatch) {
-            const imgRes = await fetch(avatarMatch[1]);
-            if (imgRes.ok) {
-                const buf = Buffer.from(await imgRes.arrayBuffer());
-                avatar = `data:image/jpeg;base64,${buf.toString('base64')}`;
-            }
-        }
-        return { name: nameMatch ? nameMatch[1] : null, avatar };
-    } catch {
-        return { name: null, avatar: null };
+async function fetchSteamInfoOnce(steam64Id) {
+    const res = await fetch(`https://steamcommunity.com/profiles/${steam64Id}?xml=1&_=${Date.now()}`);
+    if (!res.ok) throw new Error(`steam profile status ${res.status}`);
+    const xml = await res.text();
+    const nameMatch = xml.match(/<steamID><!\[CDATA\[(.*?)\]\]><\/steamID>/);
+    const avatarMatch = xml.match(/<avatarFull><!\[CDATA\[(.*?)\]\]><\/avatarFull>/);
+    let avatar = null;
+    if (avatarMatch) {
+        const imgRes = await fetch(avatarMatch[1]);
+        if (!imgRes.ok) throw new Error(`avatar status ${imgRes.status}`);
+        const buf = Buffer.from(await imgRes.arrayBuffer());
+        avatar = `data:image/jpeg;base64,${buf.toString('base64')}`;
     }
+    return { name: nameMatch ? nameMatch[1] : null, avatar };
+}
+
+async function fetchSteamInfo(steam64Id) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+            return await fetchSteamInfoOnce(steam64Id);
+        } catch {
+            await new Promise(r => setTimeout(r, 500));
+        }
+    }
+    return { name: null, avatar: null };
 }
 
 async function fetchFaceit(steam64Id, apiKey) {
@@ -44,10 +51,10 @@ async function fetchFaceit(steam64Id, apiKey) {
     return null;
 }
 
-async function renderStatsCard(player, faceitApiKey) {
+async function renderStatsCard(player, faceitLookup) {
     const [steamInfo, faceitInfo] = await Promise.all([
         fetchSteamInfo(player.steam64_id),
-        fetchFaceit(player.steam64_id, faceitApiKey)
+        faceitLookup
     ]);
     const faceit = faceitInfo || (player.ranks && player.ranks.faceit ? { level: player.ranks.faceit, elo: null } : null);
 
@@ -124,6 +131,12 @@ async function renderStatsCard(player, faceitApiKey) {
             if (rating >= 10000) return '#6666ff';
             if (rating >= 5000) return '#88ccff';
             return '#808080';
+        }
+
+        function statBar(value, worst, best) {
+            if (value == null || isNaN(value)) return '<div class="bar"></div>';
+            const t = Math.max(0, Math.min(1, (value - worst) / (best - worst)));
+            return `<div class="bar"><div class="bar-fill" style="width: ${(t * 100).toFixed(1)}%; background: hsl(${(120 * (1 - t)).toFixed(0)}, 85%, 45%)"></div></div>`;
         }
 
         function faceitColor(level) {
@@ -318,6 +331,14 @@ async function renderStatsCard(player, faceitApiKey) {
         font-weight: normal;
     }
 
+    .bar {
+        height: 8px;
+        background: #1a1a1a;
+        margin-top: 6px;
+    }
+
+    .bar-fill { height: 100%; }
+
     .detailed-stats {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
@@ -457,36 +478,44 @@ async function renderStatsCard(player, faceitApiKey) {
                 <div class="rating-box">
                     <div class="rating-label">Win Rate</div>
                     <div class="rating-value">${player.winrate != null ? (player.winrate * 100).toFixed(1) + '%' : 'N/A'}</div>
+                    ${statBar(player.winrate != null ? player.winrate * 100 : null, 15, 85)}
                 </div>
                 <div class="rating-box">
                     <div class="rating-label">Aim</div>
                     <div class="rating-value" style="color: #ffffff">${rating.aim != null ? rating.aim.toFixed(1) : 'N/A'}</div>
+                    ${statBar(rating.aim, 0, 100)}
                 </div>
                 <div class="rating-box">
                     <div class="rating-label">Utility</div>
                     <div class="rating-value" style="color: #ffffff">${rating.utility != null ? rating.utility.toFixed(1) : 'N/A'}</div>
+                    ${statBar(rating.utility, 0, 100)}
                 </div>
                 <div class="rating-box">
                     <div class="rating-label">Positioning</div>
                     <div class="rating-value" style="color: #ffffff">${rating.positioning != null ? rating.positioning.toFixed(1) : 'N/A'}</div>
+                    ${statBar(rating.positioning, 0, 100)}
                 </div>
             </div>
             <div class="detailed-stats">
                 <div class="stat-box">
                     <div class="stat-label">HS %</div>
                     <div class="stat-value">${stats.accuracy_head != null ? stats.accuracy_head.toFixed(1) + '%' : 'N/A'}</div>
+                    ${statBar(stats.accuracy_head, 0, 50)}
                 </div>
                 <div class="stat-box">
                     <div class="stat-label">Time to damage</div>
                     <div class="stat-value">${stats.reaction_time_ms ? stats.reaction_time_ms.toFixed(0) + 'ms' : 'N/A'}</div>
+                    ${statBar(stats.reaction_time_ms || null, 900, 350)}
                 </div>
                 <div class="stat-box">
                     <div class="stat-label">Spray Acc</div>
                     <div class="stat-value">${stats.spray_accuracy != null ? stats.spray_accuracy.toFixed(1) + '%' : 'N/A'}</div>
+                    ${statBar(stats.spray_accuracy, 0, 60)}
                 </div>
                 <div class="stat-box">
                     <div class="stat-label">Counter-Strafe</div>
                     <div class="stat-value">${stats.counter_strafing_good_shots_ratio != null ? stats.counter_strafing_good_shots_ratio.toFixed(1) + '%' : 'N/A'}</div>
+                    ${statBar(stats.counter_strafing_good_shots_ratio, 30, 100)}
                 </div>
             </div>
         </div>
@@ -507,6 +536,9 @@ async function renderStatsCard(player, faceitApiKey) {
 </html>`;
 
         await page.setContent(html, { waitUntil: 'networkidle0' });
+        await page.evaluate(() => Promise.all(
+            Array.from(document.images).map(img => img.decode().catch(() => {}))
+        ));
 
         const cardBuffer = await page.screenshot({
             type: 'png',
@@ -519,4 +551,4 @@ async function renderStatsCard(player, faceitApiKey) {
     }
 }
 
-module.exports = { renderStatsCard };
+module.exports = { renderStatsCard, fetchFaceit };

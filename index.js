@@ -2,7 +2,8 @@ const { Client, GatewayIntentBits, ActivityType, Collection, REST, Routes, Attac
 const fs = require('fs');
 const path = require('path');
 const toml = require('toml');
-const { renderStatsCard } = require('./render-card');
+const { renderStatsCard, fetchFaceit } = require('./render-card');
+const { startRoleSync, applyStats } = require('./roles');
 
 // User data storage
 const usersFile = path.join(__dirname, 'users.json');
@@ -187,10 +188,17 @@ commands.set('stats', {
                 return interaction.editReply('This player has a private Leetify profile.');
             }
 
-            const cardBuffer = await renderStatsCard(player, config.faceit?.api_key);
+            const faceitPromise = fetchFaceit(player.steam64_id, config.faceit?.api_key);
+            const cardBuffer = await renderStatsCard(player, faceitPromise);
             const attachment = new AttachmentBuilder(cardBuffer, { name: 'stats.png' });
 
             await interaction.editReply({ files: [attachment] });
+
+            const faceitInfo = await faceitPromise;
+            applyStats(client, player.steam64_id, {
+                premier: player.ranks?.premier ?? null,
+                faceit: faceitInfo?.level ?? player.ranks?.faceit ?? null
+            }).catch(error => console.error('[roles] sync after stats failed:', error));
         } catch (error) {
             console.error('[stats] error fetching player data:', error);
             await interaction.editReply('An error occurred while fetching player data. Please try again later.');
@@ -312,6 +320,7 @@ client.once('clientReady', async () => {
     if (config.settings.status) {
         client.user.setStatus(config.settings.status);
     }
+    startRoleSync(client, config.faceit?.api_key);
 });
 
 // stolen
