@@ -95,8 +95,9 @@ async function renderStatsCard(player, faceitLookup, steamApiKey) {
     const faceit = faceitInfo || (player.ranks && player.ranks.faceit ? { level: player.ranks.faceit, elo: null } : null);
 
     const browser = await puppeteer.launch({
+    	browser: 'firefox',
         headless: 'new',
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+        args: ['']
     });
 
     try {
