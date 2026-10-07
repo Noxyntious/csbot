@@ -211,6 +211,7 @@ async function renderStatsCard(player, faceitLookup, steamApiKey) {
         height: 420px;
         background: #000000;
         font-family: 'visitor2', 'vga', monospace;
+        line-height: 0.7;
         color: #ffffff;
         overflow: hidden;
     }
