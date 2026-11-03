@@ -471,11 +471,21 @@ function drawRecentMatches(ctx, recent) {
     });
 }
 
-function drawRanks(ctx, entries) {
+function matchesListMinHeight(recentCount) {
+    // title (line-height 15.4 + margin-bottom 2) + gap 2 + each 28px match + gap 2
+    if (recentCount === 0) return 34.8;
+    return 17.4 + 30 * Math.min(recentCount, 5);
+}
+
+function drawRanks(ctx, entries, recentCount) {
     if (entries.length === 0) return;
 
     const blockHeight = 17.4 + 23 * entries.length;
-    const blockY = 402 - blockHeight;
+    // The matches list is flex:1, but its automatic minimum height stops it from
+    // shrinking. Once the ranks are too tall, the ranks block overflows below the
+    // card instead of sliding up over the matches list.
+    const matchesHeight = Math.max(matchesListMinHeight(recentCount), 384 - 8 - blockHeight);
+    const blockY = 18 + matchesHeight + 8;
 
     drawTextRight(ctx, 'RANKS', 878, baselineOffset(blockY, 22, 15.4), {
         size: 22, spacing: 3, color: ORANGE
@@ -597,8 +607,9 @@ async function renderStatsCard(player, faceitLookup, steamApiKey) {
     });
 
     // Recent matches and competitive ranks.
-    drawRecentMatches(ctx, player.recent_matches || []);
-    drawRanks(ctx, buildRankEntries(player.ranks || {}));
+    const recentMatches = player.recent_matches || [];
+    drawRecentMatches(ctx, recentMatches);
+    drawRanks(ctx, buildRankEntries(player.ranks || {}), recentMatches.length);
 
     // Card border, drawn last so it sits above the backgrounds.
     ctx.fillStyle = ORANGE;
