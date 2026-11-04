@@ -103,9 +103,9 @@ const player = {
     recent_matches: [
         { outcome: 'win', map_name: 'de_mirage', score: [13, 9] },
         { outcome: 'loss', map_name: 'de_inferno', score: [7, 13] },
-        { outcome: 'win', map_name: 'de_ancient', score: [13, 11] },
+        { outcome: 'tie', map_name: 'de_ancient', score: [12, 12] },
         { outcome: 'loss', map_name: 'de_overpass', score: [10, 13] },
-        { outcome: 'win', map_name: 'de_vertigo', score: [13, 4] }
+        { outcome: 'tie', map_name: 'de_vertigo', score: [12, 12] }
     ],
     bans: []
 };

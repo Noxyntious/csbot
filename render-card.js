@@ -5,6 +5,7 @@ const CARD_WIDTH = 900;
 const CARD_HEIGHT = 420;
 
 const ORANGE = '#BC451D';
+const TIE = '#8F4A2A';
 const GRAY = '#676767';
 const LIGHT_GRAY = '#b8b8b8';
 const WHITE = '#ffffff';
@@ -453,11 +454,14 @@ function drawRecentMatches(ctx, recent) {
 
     recent.slice(0, 5).forEach((match, index) => {
         const y = 37.4 + index * 30;
-        const win = match.outcome === 'win';
-        const resultColor = win ? ORANGE : GRAY;
+        const outcome = String(match.outcome || '').toLowerCase();
+        const win = outcome === 'win';
+        const tie = outcome === 'tie' || outcome === 'draw'
+            || (!win && outcome !== 'loss' && Array.isArray(match.score) && match.score[0] === match.score[1]);
+        const resultColor = tie ? TIE : win ? ORANGE : GRAY;
 
         strokeRect(ctx, 658, Math.round(y + 2), 24, 24, resultColor, 1);
-        drawTextCenter(ctx, win ? 'W' : 'L', 670, baselineOffset(y + 7.7, 18, 12.6), {
+        drawTextCenter(ctx, tie ? 'T' : win ? 'W' : 'L', 670, baselineOffset(y + 7.7, 18, 12.6), {
             size: 18, color: resultColor
         });
 
